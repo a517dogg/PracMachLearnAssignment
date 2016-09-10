@@ -1,20 +1,20 @@
 ---
 title: "Prediction assignment"
 author: "Adrian Martin"
-date: "August 31, 2016"
+date: "September 10, 2016"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = TRUE)
 ```
 
 
 
 ```{r readdata}
 
-if(file.exists("C:/Users/am4337/Documents/R/coursera/har.RDATA")){
-    load(file = "C:/Users/am4337/Documents/R/coursera/har.RDATA", verbose = FALSE)
+if(file.exists("/Users/ruthschneider/Documents/Adrian/coursera/har.RDATA")){
+    load(file = "/Users/ruthschneider/Documents/Adrian/coursera/har.RDATA", verbose = FALSE)
 } else{
     raw.train <- read.csv(file = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",
                   stringsAsFactors = FALSE)
@@ -112,18 +112,19 @@ which(M > .98, arr.ind = TRUE)
 corrplot(M, type = "upper")
 ```
 
-It looks like there are a few highly correlated predictors. Using PCA pre-processing with a threshold of .98 will only drop us down 3 variables, and hopefully reducing some noise in the data. After PCA pre-processing, we can build a linear model.
+It looks like there are a few highly correlated predictors. Using Principle Component Analysis (PCA) pre-processing with a threshold of .98 will only drop us down 3 variables, and hopefully reducing some noise in the data. After PCA pre-processing, we can build a model.
 
-```{r GLM, eval = FALSE}
+```{r GLM}
 
-preProc <- preProcess(training[, colnames(training) != "classe"], method = "pca", thresh = .98)
-trainPC <- predict(preProc, training[, colnames(training) != "classe"])
-model.lda <- train(training$classe ~ ., method = "lda", data = trainPC)
+tc <- trainControl(preProcOptions = list(thresh = .98))
+model.lda <- train(classe ~ ., 
+                   data = training, 
+                   method = "lda", 
+                   preProcess = "pca", 
+                   trControl = tc)
 
-preProc.validate <- preProcess(validation[, colnames(validation) != "classe"], method = "pca", thresh = .98)
-validPC <- predict(preProc.validate, validation[, colnames(training) != "classe"])
-confmat <- confusionMatrix(validation$classe, predict(model.lda, validPC))
-
+validate.lda <- predict(model.lda, validation)
+confusionMatrix(validation$classe, validate.lda)
 ```
 
 Wow, that is pretty terrible!
@@ -138,9 +139,9 @@ rpart.plot(model.rpart$finalModel)
 confusionMatrix(validation$classe, predict(model.rpart, validation))
 ```
 
-The tree did better than lda, but still the accuracy is not very good, especially for class C.
+The tree barely did better than lda, but still the accuracy is not very good, especially for class C.
 
-Instead, we can go with a random forest model, which my computer can handle. Random Forest also does not require preprocessing, as it can handle co-linear variables without a problem.
+Instead, we can go with a random forest model. Random Forest also does not require preprocessing, as it can handle co-linear variables without a problem.
 
 ```{r buildmodels}
 model.rf <- train(classe ~ ., 
